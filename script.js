@@ -1,3 +1,8 @@
+// Global variables for session and player tracking
+let currentSessionId = null;
+let currentPlayerId = null;
+
+
 class SpanglishFixitGame {
     constructor(sentences) {
         this.originalSentences = sentences;
@@ -198,83 +203,84 @@ class SpanglishFixitGame {
         }
     </style>
     <!-- Instructions Overlay -->
-    <div id="instructions-overlay">
-        <div id="instructions-box">
-            <h2>How to Play</h2>
-            <p>Welcome to the Spanglish Fixit Challenge! Here's what to do:</p>
-            <ul>
-                <li>Click the incorrect word in each sentence.</li>
-                <li>After clicking, type the correct word.</li>
-                <li>For each sentence, your points decrease from 100 to 10 over 30 seconds.</li>
-                <li>Incorrect clicks or wrong corrections lose you 50 points.</li>
-                <li>The game ends after 15 sentences (e.g., 2/15, 3/15, etc.).</li>
-            </ul>
-            <p>Good luck!</p>
-            <button id="close-instructions">Got It!</button>
+        <div id="instructions-overlay">
+            <div id="instructions-box">
+                <h2>How to Play</h2>
+                <p>Welcome to the Spanglish Fixit Challenge! Here's what to do:</p>
+                <ul>
+                    <li>Click the incorrect word in each sentence.</li>
+                    <li>After clicking, type the correct word.</li>
+                    <li>For each sentence, your points decrease from 100 to 10 over 30 seconds.</li>
+                    <li>Incorrect clicks or wrong corrections lose you 50 points.</li>
+                    <li>The game ends after 15 sentences (e.g., 2/15, 3/15, etc.).</li>
+                </ul>
+                <p>Good luck!</p>
+                <button id="close-instructions">Got It!</button>
+            </div>
         </div>
-    </div>
-    <!-- Game Container -->
-    <div id="game-container">
-        <h1>Spanglish Fixit Challenge</h1>
-        <!-- Sentence counter -->
-        <p id="counter">Sentence: 0/15</p>
-        <!-- Points bar container -->
-        <div id="points-bar-container" style="width:100%; background: #555; height: 10px; margin-top: 5px;">
-            <div id="points-bar" style="width: 100%; height: 100%; background: #0f0; transition: width 0.1s linear;"></div>
+        <!-- Game Container -->
+        <div id="game-container">
+            <h1>Spanglish Fixit Challenge</h1>
+            <!-- Single-player UI elements -->
+            <p id="counter">Sentence: 0/15</p>
+            <div id="points-bar-container" style="width:100%; background: #555; height: 10px; margin-top: 5px;">
+                <div id="points-bar" style="width: 100%; height: 100%; background: #0f0; transition: width 0.1s linear;"></div>
+            </div>
+            <p id="sentence"></p>
+            <p id="instructionsText">Click the error and type the correction:</p>
+            <input type="text" id="answer" autofocus>
+            <p id="feedback"></p>
+            <p>Score: <span id="score">0</span></p>
+            <p>Best Score: <span id="bestScore">0</span></p>
+            <button id="start">Start Game</button>
+            <button id="restart">Restart</button>
+            <button id="review">Review Mistakes</button>
+            <button id="downloadReport" style="display: none;">Download Report</button>
         </div>
-        <p id="sentence"></p>
-        <p id="instructionsText">Click the error and type the correction:</p>
-        <input type="text" id="answer" autofocus>
-        <p id="feedback"></p>
-        <p>Score: <span id="score">0</span></p>
-        <p>Best Score: <span id="bestScore">0</span></p>
-        <button id="start">Start Game</button>
-        <button id="restart">Restart</button>
-        <button id="review">Review Mistakes</button>
-        <button id="downloadReport" style="display: none;">Download Report</button>
-    </div>
-    <!-- Multiplayer Section -->
-    <div id="multiplayer-container" style="margin-top: 20px;">
-      <h2>Multiplayer</h2>
-      <button id="createMultiplayer">Create Multiplayer Game</button>
-      <br/><br/>
-      <input type="text" id="sessionIdInput" placeholder="Enter Session ID" />
-      <button id="joinMultiplayer">Join Multiplayer Game</button>
-    </div>
-  </div>
-`;
+        <!-- Multiplayer Section -->
+        <div id="multiplayer-container" style="margin-top: 20px;">
+            <h2>Multiplayer</h2>
+            <button id="createMultiplayer">Create Multiplayer Game</button>
+            <br/><br/>
+            <input type="text" id="sessionIdInput" placeholder="Enter Session ID" />
+            <button id="joinMultiplayer">Join Multiplayer Game</button>
+        </div>
+    `;
 
-        // Right below document.body.innerHTML = ...
-const createBtn = document.getElementById("createMultiplayer");
-const joinBtn = document.getElementById("joinMultiplayer");
-const sessionInput = document.getElementById("sessionIdInput");
+    // Attach Multiplayer UI event listeners:
+    const createBtn = document.getElementById("createMultiplayer");
+    const joinBtn = document.getElementById("joinMultiplayer");
+    const sessionInput = document.getElementById("sessionIdInput");
 
-if (createBtn && joinBtn && sessionInput) {
-  // When we click "Create Multiplayer", make a new session
-  createBtn.addEventListener("click", () => {
-    const sessionId = createGameSession(sentences);
-    console.log("Session created:", sessionId);
-    // Optionally, put the session ID in the input so you can copy/paste it
-    sessionInput.value = sessionId;
-  });
-
-  // When we click "Join Multiplayer", read the session ID from the input
-  joinBtn.addEventListener("click", () => {
-    const roomId = sessionInput.value.trim();
-    if (!roomId) return;
-    joinGameSession(roomId, "player2"); // You could prompt for a real username
-  });
-}
-
-        document.getElementById("close-instructions").addEventListener("click", () => {
-            document.getElementById("instructions-overlay").style.display = "none";
+    if (createBtn && joinBtn && sessionInput) {
+        createBtn.addEventListener("click", () => {
+            // Create session and update global variables
+            currentSessionId = createGameSession(sentences);
+            currentPlayerId = "player1"; // Creator is player1
+            console.log("Session created:", currentSessionId);
+            // Display the session ID in the input for easy sharing
+            sessionInput.value = currentSessionId;
         });
-        document.getElementById("start").addEventListener("click", () => this.startGame());
-        document.getElementById("restart").addEventListener("click", () => this.restartGame());
-        document.getElementById("review").addEventListener("click", () => this.startReview());
-        this.setupInputListener();
-        this.updateBestScoreDisplay();
+
+        joinBtn.addEventListener("click", () => {
+            const roomId = sessionInput.value.trim();
+            if (!roomId) return;
+            currentSessionId = roomId;
+            currentPlayerId = "player2"; // Joiner is player2
+            joinGameSession(currentSessionId, currentPlayerId);
+        });
     }
+
+    // Attach your existing event listeners:
+    document.getElementById("close-instructions").addEventListener("click", () => {
+        document.getElementById("instructions-overlay").style.display = "none";
+    });
+    document.getElementById("start").addEventListener("click", () => this.startGame());
+    document.getElementById("restart").addEventListener("click", () => this.restartGame());
+    document.getElementById("review").addEventListener("click", () => this.startReview());
+    this.setupInputListener();
+    this.updateBestScoreDisplay();
+}
 
     updateBestScoreDisplay() {
         let storedBest = localStorage.getItem("bestScoreSpanglish") || 0;
@@ -421,15 +427,22 @@ if (createBtn && joinBtn && sessionInput) {
         possibleAnswers = possibleAnswers.map(answer => answer.toLowerCase());
         if (this.reviewMode) {
             if (possibleAnswers.includes(userInput)) {
-                input.classList.add("correct");
-                document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
-                setTimeout(() => {
-                    input.classList.remove("correct");
-                    input.value = "";
-                    this.currentIndex++;
-                    this.currentErrorWord = null;
-                    this.updateSentence();
-                }, 1000);
+    let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
+    this.score += correctionScore;
+    document.getElementById("score").textContent = this.score;
+    input.classList.add("correct");
+    document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
+    setTimeout(() => {
+        input.classList.remove("correct");
+        input.value = "";
+        // Submit this answer to Firebase so both players sync:
+        submitAnswer(this.score);
+        // Then advance to the next sentence locally:
+        this.currentIndex++;
+        this.currentErrorWord = null;
+        this.updateSentence();
+    }, 1000);
+}
             } else {
                 input.classList.add("incorrect");
                 document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
@@ -983,33 +996,58 @@ const game = new SpanglishFixitGame(sentences);
 
 // Create a new game session and store it in Firebase
 function createGameSession(sentences) {
-    // Create a new session under the "gameSessions" node
-    const newSessionRef = firebase.database().ref('gameSessions').push();
-    const sessionId = newSessionRef.key;
-    newSessionRef.set({
-        sentences: sentences,  // Store your set of sentences here
-        currentRound: 0,
-        scores: {},            // This object can later hold player scores (e.g., { player1: 0, player2: 0 })
-        createdAt: Date.now()
-    });
-    console.log("Created game session with ID:", sessionId);
-    return sessionId;
+  // Create a new session under the "gameSessions" node
+  const newSessionRef = firebase.database().ref('gameSessions').push();
+  const sessionId = newSessionRef.key;
+  newSessionRef.set({
+    sentences: sentences,  // The set of sentences for the game
+    currentRound: 0,
+    roundStartTime: Date.now(),
+    players: {
+      // Predefine slots for two players; player1 is the creator.
+      player1: { score: 0, hasAnswered: false },
+      player2: { score: 0, hasAnswered: false }
+    },
+    createdAt: Date.now()
+  });
+  console.log("Created game session with ID:", sessionId);
+  return sessionId;
 }
+
 
 // Join an existing game session with a given session (room) ID and player ID
 function joinGameSession(sessionId, playerId) {
-    const sessionRef = firebase.database().ref('gameSessions/' + sessionId);
+  currentSessionId = sessionId;
+  currentPlayerId = playerId;
+  const sessionRef = firebase.database().ref('gameSessions/' + sessionId);
+  
+  // Add the player to the session (if not already set)
+  sessionRef.child('players').child(playerId).set({
+    score: 0,
+    hasAnswered: false
+  });
+  
+  // Listen for changes in the session data
+  sessionRef.on('value', (snapshot) => {
+    const gameState = snapshot.val();
+    console.log("Game session updated:", gameState);
     
-    // Add the player to the scores list for tracking
-    sessionRef.child('scores').child(playerId).set(0);
+    // Example: Update UI elements (you need to design these)
+    // Update round counter:
+    if (gameState && typeof gameState.currentRound === "number") {
+      document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
+    }
     
-    // Listen for changes in the session data (for example, to update round, sentences, or scores)
-    sessionRef.on('value', (snapshot) => {
-        const gameState = snapshot.val();
-        console.log("Game session updated:", gameState);
-        // Here you can update your game UI based on the received gameState.
-        // For instance, update the current round or display opponent's score.
-    });
+    // Update scores display (you might create new UI elements for opponent score)
+    if (gameState && gameState.players) {
+      // For example, display both player scores in the console:
+      console.log("Player1 Score:", gameState.players.player1.score);
+      console.log("Player2 Score:", gameState.players.player2.score);
+    }
+    
+    // You can also use the updated state to trigger a round change,
+    // such as reloading the next sentence.
+  });
 }
 
 // -------------------------------
@@ -1029,3 +1067,35 @@ function joinGameSession(sessionId, playerId) {
 // - An input field for a room ID and a "Join Multiplayer Game" button that calls joinGameSession(roomId, playerId)
 // ------------------------------------------------------
 
+// Step 3: Function to submit an answer and update the Firebase state
+function submitAnswer(newScore) {
+  // Ensure we have a valid session and player
+  if (!currentSessionId || !currentPlayerId) {
+    console.error("Session ID or player ID is not set.");
+    return;
+  }
+  const sessionRef = firebase.database().ref('gameSessions/' + currentSessionId);
+  
+  // Update the player's score and mark as answered
+  sessionRef.child('players').child(currentPlayerId).update({
+    score: newScore,
+    hasAnswered: true
+  });
+  
+  // Check if both players have answered
+  sessionRef.child('players').once('value', (snapshot) => {
+    const players = snapshot.val();
+    if (players.player1.hasAnswered && players.player2.hasAnswered) {
+      // Both players answered; advance to the next round
+      const newRound = (players.currentRound || 0) + 1;
+      sessionRef.update({
+        currentRound: newRound,
+        roundStartTime: Date.now()
+      });
+      // Reset answer flags for both players
+      sessionRef.child('players').child('player1').update({ hasAnswered: false });
+      sessionRef.child('players').child('player2').update({ hasAnswered: false });
+      console.log("Both players answered. Advancing to round:", newRound);
+    }
+  });
+}
