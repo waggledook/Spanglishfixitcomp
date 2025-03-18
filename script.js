@@ -406,82 +406,55 @@ class SpanglishFixitGame {
     }
 
     checkAnswer() {
-        if (!this.currentErrorWord) {
-            document.getElementById("feedback").textContent = "Please click on the incorrect word first!";
-            return;
-        }
-        if (this.pointsInterval) {
-            clearInterval(this.pointsInterval);
-            this.pointsInterval = null;
-        }
-        if (!this.gameActive && !this.reviewMode) return;
-        const input = document.getElementById("answer");
-        const userInput = input.value.trim().toLowerCase();
-        const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
-        const currentSentence = currentSet[this.currentIndex];
-        const correctionTime = Date.now() - this.startCorrectionTime;
-        let possibleAnswers = currentSentence.correctAnswer;
-        if (!Array.isArray(possibleAnswers)) {
-            possibleAnswers = [possibleAnswers];
-        }
-        possibleAnswers = possibleAnswers.map(answer => answer.toLowerCase());
-        if (this.reviewMode) {
-            if (possibleAnswers.includes(userInput)) {
-    let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
-    this.score += correctionScore;
-    document.getElementById("score").textContent = this.score;
-    input.classList.add("correct");
-    document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
-    setTimeout(() => {
-        input.classList.remove("correct");
-        input.value = "";
-        // Submit this answer to Firebase so both players sync:
-        submitAnswer(this.score);
-        // Then advance to the next sentence locally:
-        this.currentIndex++;
-        this.currentErrorWord = null;
-        this.updateSentence();
-    }, 1000);
-}
-            } else {
-                input.classList.add("incorrect");
-                document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
-                setTimeout(() => {
-                    input.classList.remove("incorrect");
-                    input.value = "";
-                    this.currentIndex++;
-                    this.currentErrorWord = null;
-                    this.updateSentence();
-                }, 1000);
-            }
-            return;
-        }
+    if (!this.currentErrorWord) {
+        document.getElementById("feedback").textContent = "Please click on the incorrect word first!";
+        return;
+    }
+    if (this.pointsInterval) {
+        clearInterval(this.pointsInterval);
+        this.pointsInterval = null;
+    }
+    if (!this.gameActive && !this.reviewMode) return;
+
+    const input = document.getElementById("answer");
+    const userInput = input.value.trim().toLowerCase();
+    const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
+    const currentSentence = currentSet[this.currentIndex];
+    const correctionTime = Date.now() - this.startCorrectionTime;
+    let possibleAnswers = currentSentence.correctAnswer;
+    if (!Array.isArray(possibleAnswers)) {
+        possibleAnswers = [possibleAnswers];
+    }
+    possibleAnswers = possibleAnswers.map(answer => answer.toLowerCase());
+
+    // -----------------------
+    // REVIEW MODE BRANCH
+    // -----------------------
+    if (this.reviewMode) {
         if (possibleAnswers.includes(userInput)) {
+            // Correct answer in review mode
             let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
             this.score += correctionScore;
             document.getElementById("score").textContent = this.score;
             input.classList.add("correct");
             document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
+
             setTimeout(() => {
                 input.classList.remove("correct");
                 input.value = "";
+                // Submit this answer to Firebase so both players sync:
+                submitAnswer(this.score);
+                // Then advance to the next sentence locally:
                 this.currentIndex++;
                 this.currentErrorWord = null;
                 this.updateSentence();
             }, 1000);
+
         } else {
-            this.score -= 50;
-            if (!this.wrongAnswers.some(item => item.sentence === currentSentence.sentence)) {
-                this.wrongAnswers.push({
-                    sentence: currentSentence.sentence,
-                    errorWord: currentSentence.errorWord,
-                    correctAnswer: currentSentence.correctAnswer,
-                    studentAnswer: userInput
-                });
-            }
-            document.getElementById("score").textContent = this.score;
+            // Incorrect answer in review mode
             input.classList.add("incorrect");
             document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
+
             setTimeout(() => {
                 input.classList.remove("incorrect");
                 input.value = "";
@@ -490,7 +463,52 @@ class SpanglishFixitGame {
                 this.updateSentence();
             }, 1000);
         }
+        return; 
     }
+
+    // -----------------------
+    // NORMAL MODE BRANCH
+    // -----------------------
+    if (possibleAnswers.includes(userInput)) {
+        // Correct answer in normal mode
+        let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
+        this.score += correctionScore;
+        document.getElementById("score").textContent = this.score;
+        input.classList.add("correct");
+        document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
+
+        setTimeout(() => {
+            input.classList.remove("correct");
+            input.value = "";
+            this.currentIndex++;
+            this.currentErrorWord = null;
+            this.updateSentence();
+        }, 1000);
+
+    } else {
+        // Incorrect answer in normal mode
+        this.score -= 50;
+        if (!this.wrongAnswers.some(item => item.sentence === currentSentence.sentence)) {
+            this.wrongAnswers.push({
+                sentence: currentSentence.sentence,
+                errorWord: currentSentence.errorWord,
+                correctAnswer: currentSentence.correctAnswer,
+                studentAnswer: userInput
+            });
+        }
+        document.getElementById("score").textContent = this.score;
+        input.classList.add("incorrect");
+        document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
+
+        setTimeout(() => {
+            input.classList.remove("incorrect");
+            input.value = "";
+            this.currentIndex++;
+            this.currentErrorWord = null;
+            this.updateSentence();
+        }, 1000);
+    }
+}
 
     // No overall timer now, so startTimer() is removed.
 
