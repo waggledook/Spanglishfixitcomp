@@ -1005,7 +1005,6 @@ const sentences = [
     }
 ];
 
-const game = new SpanglishFixitGame(sentences);
 
 // Create and store the game instance globally
 window.game = new SpanglishFixitGame(sentences);
@@ -1050,27 +1049,28 @@ function joinGameSession(sessionId, playerId) {
   
   // Listen for changes in the session data
   sessionRef.on('value', (snapshot) => {
-    const gameState = snapshot.val();
-    console.log("Game session updated:", gameState);
-    
-    // Update the round counter in the UI based on the shared round.
-    if (gameState && typeof gameState.currentRound === "number") {
-      // Compare with local currentIndex and update if necessary.
-      if (window.game.currentIndex !== gameState.currentRound) {
-        window.game.currentIndex = gameState.currentRound;
-        window.game.updateSentence();
-      }
-      // Also update the counter text:
-      document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
+  const gameState = snapshot.val();
+  console.log("Game session updated:", gameState);
+  
+  // Update the round counter in the UI based on the shared round.
+  if (gameState && typeof gameState.currentRound === "number") {
+    if (window.game.currentIndex !== gameState.currentRound) {
+      window.game.currentIndex = gameState.currentRound;
+      window.game.updateSentence();
     }
-    
-    // (Optional) Update scores on the UI.
-    if (gameState && gameState.players) {
+    document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
+  }
+  
+  // Update scores display safely:
+  if (gameState && gameState.players) {
+    if (gameState.players.player1) {
       console.log("Player1 Score:", gameState.players.player1.score);
-      console.log("Player2 Score:", gameState.players.player2.score);
-      // You could update score displays here if you add UI elements for opponent score.
     }
-  });
+    if (gameState.players.player2) {
+      console.log("Player2 Score:", gameState.players.player2.score);
+    }
+  }
+});
 }
 
 // -------------------------------
