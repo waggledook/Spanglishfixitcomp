@@ -233,7 +233,39 @@ class SpanglishFixitGame {
         <button id="review">Review Mistakes</button>
         <button id="downloadReport" style="display: none;">Download Report</button>
     </div>
+    <!-- Multiplayer Section -->
+    <div id="multiplayer-container" style="margin-top: 20px;">
+      <h2>Multiplayer</h2>
+      <button id="createMultiplayer">Create Multiplayer Game</button>
+      <br/><br/>
+      <input type="text" id="sessionIdInput" placeholder="Enter Session ID" />
+      <button id="joinMultiplayer">Join Multiplayer Game</button>
+    </div>
+  </div>
 `;
+
+        // Right below document.body.innerHTML = ...
+const createBtn = document.getElementById("createMultiplayer");
+const joinBtn = document.getElementById("joinMultiplayer");
+const sessionInput = document.getElementById("sessionIdInput");
+
+if (createBtn && joinBtn && sessionInput) {
+  // When we click "Create Multiplayer", make a new session
+  createBtn.addEventListener("click", () => {
+    const sessionId = createGameSession(sentences);
+    console.log("Session created:", sessionId);
+    // Optionally, put the session ID in the input so you can copy/paste it
+    sessionInput.value = sessionId;
+  });
+
+  // When we click "Join Multiplayer", read the session ID from the input
+  joinBtn.addEventListener("click", () => {
+    const roomId = sessionInput.value.trim();
+    if (!roomId) return;
+    joinGameSession(roomId, "player2"); // You could prompt for a real username
+  });
+}
+
         document.getElementById("close-instructions").addEventListener("click", () => {
             document.getElementById("instructions-overlay").style.display = "none";
         });
