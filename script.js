@@ -1094,13 +1094,13 @@ function submitAnswer(newScore) {
     return;
   }
   const sessionRef = firebase.database().ref('gameSessions/' + currentSessionId);
-  
+
   // Update the player's score and mark as answered
   sessionRef.child('players').child(currentPlayerId).update({
     score: newScore,
     hasAnswered: true
   });
-  
+
   // Check if both players have answered
   sessionRef.child('players').once('value', (snapshot) => {
     const players = snapshot.val();
@@ -1116,18 +1116,21 @@ function submitAnswer(newScore) {
       sessionRef.child('players').child('player2').update({ hasAnswered: false });
       console.log("Both players answered. Advancing to round:", newRound);
     }
-  function startMultiplayerGame() {
+  });
+} // <-- Make sure this curly brace ends the submitAnswer() function
+
+// Now define startMultiplayerGame() at top level, not inside submitAnswer()
+function startMultiplayerGame() {
   currentSessionId = createGameSession(sentences);
   currentPlayerId = "player1";
   joinGameSession(currentSessionId, currentPlayerId);
-  
+
   // Hide the single-player "Start Game" button since we're now in multiplayer mode
   document.getElementById("start").style.display = "none";
-  
-  // Optionally, mark the game as active:
+
+  // Optionally mark the game as active
   window.game.gameActive = true;
-  
+
   console.log("Multiplayer session created & joined as player1:", currentSessionId);
 }
-  });
-}
+
