@@ -469,45 +469,44 @@ class SpanglishFixitGame {
     // -----------------------
     // NORMAL MODE BRANCH
     // -----------------------
-    if (possibleAnswers.includes(userInput)) {
-        // Correct answer in normal mode
-        let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
-        this.score += correctionScore;
-        document.getElementById("score").textContent = this.score;
-        input.classList.add("correct");
-        document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
-
-        setTimeout(() => {
-            input.classList.remove("correct");
-            input.value = "";
-            this.currentIndex++;
-            this.currentErrorWord = null;
-            this.updateSentence();
-        }, 1000);
-
-    } else {
-        // Incorrect answer in normal mode
-        this.score -= 50;
-        if (!this.wrongAnswers.some(item => item.sentence === currentSentence.sentence)) {
-            this.wrongAnswers.push({
-                sentence: currentSentence.sentence,
-                errorWord: currentSentence.errorWord,
-                correctAnswer: currentSentence.correctAnswer,
-                studentAnswer: userInput
-            });
-        }
-        document.getElementById("score").textContent = this.score;
-        input.classList.add("incorrect");
-        document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
-
-        setTimeout(() => {
-            input.classList.remove("incorrect");
-            input.value = "";
-            this.currentIndex++;
-            this.currentErrorWord = null;
-            this.updateSentence();
-        }, 1000);
+    // NORMAL MODE BRANCH in checkAnswer():
+if (possibleAnswers.includes(userInput)) {
+    // Correct answer in normal mode:
+    let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
+    this.score += correctionScore;
+    document.getElementById("score").textContent = this.score;
+    input.classList.add("correct");
+    document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
+    
+    setTimeout(() => {
+        input.classList.remove("correct");
+        input.value = "";
+        // Instead of updating local round immediately, call submitAnswer:
+        submitAnswer(this.score);
+        // (Do not call this.currentIndex++ or this.updateSentence() here.)
+    }, 1000);
+} else {
+    // Incorrect answer in normal mode:
+    this.score -= 50;
+    if (!this.wrongAnswers.some(item => item.sentence === currentSentence.sentence)) {
+        this.wrongAnswers.push({
+            sentence: currentSentence.sentence,
+            errorWord: currentSentence.errorWord,
+            correctAnswer: currentSentence.correctAnswer,
+            studentAnswer: userInput
+        });
     }
+    document.getElementById("score").textContent = this.score;
+    input.classList.add("incorrect");
+    document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
+    
+    setTimeout(() => {
+        input.classList.remove("incorrect");
+        input.value = "";
+        // Call submitAnswer even on an incorrect answer:
+        submitAnswer(this.score);
+    }, 1000);
+}
 }
 
     // No overall timer now, so startTimer() is removed.
@@ -1008,6 +1007,10 @@ const sentences = [
 
 const game = new SpanglishFixitGame(sentences);
 
+// Create and store the game instance globally
+window.game = new SpanglishFixitGame(sentences);
+
+
 // -------------------------------
 // Firebase Multiplayer Functions
 // -------------------------------
@@ -1050,21 +1053,23 @@ function joinGameSession(sessionId, playerId) {
     const gameState = snapshot.val();
     console.log("Game session updated:", gameState);
     
-    // Example: Update UI elements (you need to design these)
-    // Update round counter:
+    // Update the round counter in the UI based on the shared round.
     if (gameState && typeof gameState.currentRound === "number") {
+      // Compare with local currentIndex and update if necessary.
+      if (window.game.currentIndex !== gameState.currentRound) {
+        window.game.currentIndex = gameState.currentRound;
+        window.game.updateSentence();
+      }
+      // Also update the counter text:
       document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
     }
     
-    // Update scores display (you might create new UI elements for opponent score)
+    // (Optional) Update scores on the UI.
     if (gameState && gameState.players) {
-      // For example, display both player scores in the console:
       console.log("Player1 Score:", gameState.players.player1.score);
       console.log("Player2 Score:", gameState.players.player2.score);
+      // You could update score displays here if you add UI elements for opponent score.
     }
-    
-    // You can also use the updated state to trigger a round change,
-    // such as reloading the next sentence.
   });
 }
 
