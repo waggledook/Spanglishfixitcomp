@@ -254,13 +254,9 @@ class SpanglishFixitGame {
 
     if (createBtn && joinBtn && sessionInput) {
         createBtn.addEventListener("click", () => {
-            // Create session and update global variables
-            currentSessionId = createGameSession(sentences);
-            currentPlayerId = "player1"; // Creator is player1
-            console.log("Session created:", currentSessionId);
-            // Display the session ID in the input for easy sharing
-            sessionInput.value = currentSessionId;
-        });
+  startMultiplayerGame();
+  sessionInput.value = currentSessionId; // Show the session ID for sharing
+});
 
         joinBtn.addEventListener("click", () => {
             const roomId = sessionInput.value.trim();
@@ -1120,5 +1116,18 @@ function submitAnswer(newScore) {
       sessionRef.child('players').child('player2').update({ hasAnswered: false });
       console.log("Both players answered. Advancing to round:", newRound);
     }
+  function startMultiplayerGame() {
+  currentSessionId = createGameSession(sentences);
+  currentPlayerId = "player1";
+  joinGameSession(currentSessionId, currentPlayerId);
+  
+  // Hide the single-player "Start Game" button since we're now in multiplayer mode
+  document.getElementById("start").style.display = "none";
+  
+  // Optionally, mark the game as active:
+  window.game.gameActive = true;
+  
+  console.log("Multiplayer session created & joined as player1:", currentSessionId);
+}
   });
 }
