@@ -253,19 +253,40 @@ class SpanglishFixitGame {
     const sessionInput = document.getElementById("sessionIdInput");
 
     if (createBtn && joinBtn && sessionInput) {
-        createBtn.addEventListener("click", () => {
-  startMultiplayerGame();
-  sessionInput.value = currentSessionId; // Show the session ID for sharing
-});
+  // For creating a game (player1)
+  createBtn.addEventListener("click", () => {
+    promptForPlayerName((name) => {
+      currentPlayerId = name; // Use custom name for player1
+      currentSessionId = createGameSession(sentences);
+      joinGameSession(currentSessionId, currentPlayerId);
+      
+      // Hide the single-player start button and show waiting message
+      document.getElementById("start").style.display = "none";
+      const waitingMessage = document.createElement('div');
+      waitingMessage.id = 'waiting';
+      waitingMessage.style.fontSize = '24px';
+      waitingMessage.style.marginTop = '10px';
+      waitingMessage.textContent = "Waiting for another player to join...";
+      document.getElementById("game-container").appendChild(waitingMessage);
+      
+      // Mark game as active and show the session ID for sharing
+      window.game.gameActive = true;
+      console.log("Multiplayer session created & joined as", currentPlayerId, "with session ID:", currentSessionId);
+      sessionInput.value = currentSessionId;
+    });
+  });
 
-        joinBtn.addEventListener("click", () => {
-            const roomId = sessionInput.value.trim();
-            if (!roomId) return;
-            currentSessionId = roomId;
-            currentPlayerId = "player2"; // Joiner is player2
-            joinGameSession(currentSessionId, currentPlayerId);
-        });
-    }
+  // For joining a game (player2)
+  joinBtn.addEventListener("click", () => {
+    const roomId = sessionInput.value.trim();
+    if (!roomId) return;
+    promptForPlayerName((name) => {
+      currentSessionId = roomId;
+      currentPlayerId = name; // Use custom name for player2
+      joinGameSession(currentSessionId, currentPlayerId);
+    });
+  });
+}
 
     // Attach your existing event listeners:
     document.getElementById("close-instructions").addEventListener("click", () => {
@@ -284,53 +305,55 @@ class SpanglishFixitGame {
     }
 
     updateSentence() {
-    if (this.reviewMode) {
-        // In review mode, use the length of wrongAnswers
-        if (this.currentIndex >= this.wrongAnswers.length) {
-            document.getElementById("sentence").innerHTML = "Review complete!";
-            document.getElementById("answer").style.display = "none";
-            document.getElementById("feedback").textContent = "";
-            this.reviewMode = false;
-            return;
-        }
-        document.getElementById("counter").textContent = `Review: ${this.currentIndex + 1}/${this.wrongAnswers.length}`;
-    } else {
-        // Normal game mode: check against totalSentences
-        if (this.currentIndex >= this.totalSentences) {
-            this.endGame();
-            return;
-        }
-        document.getElementById("counter").textContent = `Sentence: ${this.currentIndex + 1}/${this.totalSentences}`;
-    }
-    
-    const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
-    const currentSentence = currentSet[this.currentIndex];
-    const sentenceParts = currentSentence.sentence.split(" ");
-    let sentenceHTML = sentenceParts.map((word) => `<span class="clickable-word">${word}</span>`).join(" ");
-    document.getElementById("sentence").innerHTML = sentenceHTML;
-    
-    // Re-enable clicking for new sentence
-    document.getElementById("sentence").style.pointerEvents = "auto";
-    
-    // Start the 30-second phase timer for scoring (max 100 points, min 10)
-    this.startClickTime = Date.now();
-    if (this.pointsInterval) clearInterval(this.pointsInterval);
-    this.pointsInterval = setInterval(() => {
-        let elapsed = Date.now() - this.startClickTime;
-        let availablePoints = Math.max(100 - Math.floor(elapsed / 300), 10);
-        let percentage = ((availablePoints - 10) / (100 - 10)) * 100;
-        document.getElementById("points-bar").style.width = percentage + "%";
-    }, 100);
-    
-    // Attach click listeners to each word
-    const clickableWords = document.querySelectorAll(".clickable-word");
-    clickableWords.forEach((wordElement) => {
-        wordElement.addEventListener("click", () => {
-            this.handleWordClick(wordElement, currentSentence);
-        });
-    });
-}
+  // Re-enable answer input for the new round.
+  document.getElementById("answer").disabled = false;
 
+  if (this.reviewMode) {
+    // In review mode, use the length of wrongAnswers
+    if (this.currentIndex >= this.wrongAnswers.length) {
+      document.getElementById("sentence").innerHTML = "Review complete!";
+      document.getElementById("answer").style.display = "none";
+      document.getElementById("feedback").textContent = "";
+      this.reviewMode = false;
+      return;
+    }
+    document.getElementById("counter").textContent = `Review: ${this.currentIndex + 1}/${this.wrongAnswers.length}`;
+  } else {
+    // Normal game mode: check against totalSentences
+    if (this.currentIndex >= this.totalSentences) {
+      this.endGame();
+      return;
+    }
+    document.getElementById("counter").textContent = `Sentence: ${this.currentIndex + 1}/${this.totalSentences}`;
+  }
+
+  const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
+  const currentSentence = currentSet[this.currentIndex];
+  const sentenceParts = currentSentence.sentence.split(" ");
+  let sentenceHTML = sentenceParts.map((word) => `<span class="clickable-word">${word}</span>`).join(" ");
+  document.getElementById("sentence").innerHTML = sentenceHTML;
+
+  // Re-enable clicking for new sentence
+  document.getElementById("sentence").style.pointerEvents = "auto";
+
+  // Start the 30-second phase timer for scoring (max 100 points, min 10)
+  this.startClickTime = Date.now();
+  if (this.pointsInterval) clearInterval(this.pointsInterval);
+  this.pointsInterval = setInterval(() => {
+    let elapsed = Date.now() - this.startClickTime;
+    let availablePoints = Math.max(100 - Math.floor(elapsed / 300), 10);
+    let percentage = ((availablePoints - 10) / (100 - 10)) * 100;
+    document.getElementById("points-bar").style.width = percentage + "%";
+  }, 100);
+
+  // Attach click listeners to each word
+  const clickableWords = document.querySelectorAll(".clickable-word");
+  clickableWords.forEach((wordElement) => {
+    wordElement.addEventListener("click", () => {
+      this.handleWordClick(wordElement, currentSentence);
+    });
+  });
+}
 
     handleWordClick(wordElement, currentSentence) {
         if (this.pointsInterval) {
@@ -402,72 +425,75 @@ class SpanglishFixitGame {
     }
 
     checkAnswer() {
-    if (!this.currentErrorWord) {
-        document.getElementById("feedback").textContent = "Please click on the incorrect word first!";
-        return;
+  const input = document.getElementById("answer");
+  // If input is already disabled, ignore additional submissions.
+  if (input.disabled) return;
+  
+  // If no error word was clicked yet, do not proceed.
+  if (!this.currentErrorWord) {
+    document.getElementById("feedback").textContent = "Please click on the incorrect word first!";
+    return;
+  }
+  
+  if (this.pointsInterval) {
+    clearInterval(this.pointsInterval);
+    this.pointsInterval = null;
+  }
+  if (!this.gameActive && !this.reviewMode) return;
+  
+  // Disable the input so that the player cannot submit again this round.
+  input.disabled = true;
+
+  const userInput = input.value.trim().toLowerCase();
+  const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
+  const currentSentence = currentSet[this.currentIndex];
+  const correctionTime = Date.now() - this.startCorrectionTime;
+  let possibleAnswers = currentSentence.correctAnswer;
+  if (!Array.isArray(possibleAnswers)) {
+    possibleAnswers = [possibleAnswers];
+  }
+  possibleAnswers = possibleAnswers.map(answer => answer.toLowerCase());
+
+  // -----------------------
+  // REVIEW MODE BRANCH
+  // -----------------------
+  if (this.reviewMode) {
+    if (possibleAnswers.includes(userInput)) {
+      let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
+      this.score += correctionScore;
+      document.getElementById("score").textContent = this.score;
+      input.classList.add("correct");
+      document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
+
+      setTimeout(() => {
+        input.classList.remove("correct");
+        input.value = "";
+        // Submit this answer to Firebase so both players sync:
+        submitAnswer(this.score);
+        // Then advance to the next sentence locally:
+        this.currentIndex++;
+        this.currentErrorWord = null;
+        this.updateSentence();
+      }, 1000);
+    } else {
+      input.classList.add("incorrect");
+      document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
+
+      setTimeout(() => {
+        input.classList.remove("incorrect");
+        input.value = "";
+        this.currentIndex++;
+        this.currentErrorWord = null;
+        this.updateSentence();
+      }, 1000);
     }
-    if (this.pointsInterval) {
-        clearInterval(this.pointsInterval);
-        this.pointsInterval = null;
-    }
-    if (!this.gameActive && !this.reviewMode) return;
+    return; 
+  }
 
-    const input = document.getElementById("answer");
-    const userInput = input.value.trim().toLowerCase();
-    const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
-    const currentSentence = currentSet[this.currentIndex];
-    const correctionTime = Date.now() - this.startCorrectionTime;
-    let possibleAnswers = currentSentence.correctAnswer;
-    if (!Array.isArray(possibleAnswers)) {
-        possibleAnswers = [possibleAnswers];
-    }
-    possibleAnswers = possibleAnswers.map(answer => answer.toLowerCase());
-
-    // -----------------------
-    // REVIEW MODE BRANCH
-    // -----------------------
-    if (this.reviewMode) {
-        if (possibleAnswers.includes(userInput)) {
-            // Correct answer in review mode
-            let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
-            this.score += correctionScore;
-            document.getElementById("score").textContent = this.score;
-            input.classList.add("correct");
-            document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
-
-            setTimeout(() => {
-                input.classList.remove("correct");
-                input.value = "";
-                // Submit this answer to Firebase so both players sync:
-                submitAnswer(this.score);
-                // Then advance to the next sentence locally:
-                this.currentIndex++;
-                this.currentErrorWord = null;
-                this.updateSentence();
-            }, 1000);
-
-        } else {
-            // Incorrect answer in review mode
-            input.classList.add("incorrect");
-            document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
-
-            setTimeout(() => {
-                input.classList.remove("incorrect");
-                input.value = "";
-                this.currentIndex++;
-                this.currentErrorWord = null;
-                this.updateSentence();
-            }, 1000);
-        }
-        return; 
-    }
-
-    // -----------------------
-    // NORMAL MODE BRANCH
-    // -----------------------
-    // NORMAL MODE BRANCH in checkAnswer():
-if (possibleAnswers.includes(userInput)) {
-    // Correct answer in normal mode:
+  // -----------------------
+  // NORMAL MODE BRANCH
+  // -----------------------
+  if (possibleAnswers.includes(userInput)) {
     let correctionScore = Math.max(100 - Math.floor(correctionTime / 300), 10);
     this.score += correctionScore;
     document.getElementById("score").textContent = this.score;
@@ -475,87 +501,148 @@ if (possibleAnswers.includes(userInput)) {
     document.getElementById("feedback").textContent = `Correct. The answer is: ${possibleAnswers.join(" / ")}`;
     
     setTimeout(() => {
-        input.classList.remove("correct");
-        input.value = "";
-        // Instead of updating local round immediately, call submitAnswer:
-        submitAnswer(this.score);
-        // (Do not call this.currentIndex++ or this.updateSentence() here.)
+      input.classList.remove("correct");
+      input.value = "";
+      submitAnswer(this.score);
+      // (Do not call this.currentIndex++ or this.updateSentence() here; these are updated via Firebase.)
     }, 1000);
-} else {
-    // Incorrect answer in normal mode:
+  } else {
     this.score -= 50;
     if (!this.wrongAnswers.some(item => item.sentence === currentSentence.sentence)) {
-        this.wrongAnswers.push({
-            sentence: currentSentence.sentence,
-            errorWord: currentSentence.errorWord,
-            correctAnswer: currentSentence.correctAnswer,
-            studentAnswer: userInput
-        });
+      this.wrongAnswers.push({
+        sentence: currentSentence.sentence,
+        errorWord: currentSentence.errorWord,
+        correctAnswer: currentSentence.correctAnswer,
+        studentAnswer: userInput
+      });
     }
     document.getElementById("score").textContent = this.score;
     input.classList.add("incorrect");
     document.getElementById("feedback").textContent = `Incorrect. The correct answer is: ${possibleAnswers.join(" / ")}`;
     
     setTimeout(() => {
-        input.classList.remove("incorrect");
-        input.value = "";
-        // Call submitAnswer even on an incorrect answer:
-        submitAnswer(this.score);
+      input.classList.remove("incorrect");
+      input.value = "";
+      submitAnswer(this.score);
     }, 1000);
-}
+  }
 }
 
     // No overall timer now, so startTimer() is removed.
 
     endGame() {
-    this.gameActive = false;
-    if (this.pointsInterval) clearInterval(this.pointsInterval);
+  this.gameActive = false;
+  if (this.pointsInterval) clearInterval(this.pointsInterval);
 
-    // Check and update best score using localStorage
+  // Check if we're in multiplayer mode (i.e. currentSessionId is set)
+  if (currentSessionId) {
+    const sessionRef = firebase.database().ref('gameSessions/' + currentSessionId);
+    sessionRef.once('value').then((snapshot) => {
+      const sessionData = snapshot.val();
+      // Retrieve player scores and custom names
+      const player1Score = sessionData.players.player1 ? sessionData.players.player1.score : 0;
+      const player2Score = sessionData.players.player2 ? sessionData.players.player2.score : 0;
+      const p1Name = sessionData.players.player1 ? sessionData.players.player1.name : "Player 1";
+      const p2Name = sessionData.players.player2 ? sessionData.players.player2.name : "Player 2";
+
+      // Determine the winner message using custom names
+      let winnerMessage = "";
+      if (player1Score > player2Score) {
+        winnerMessage = `${p1Name} wins!`;
+      } else if (player2Score > player1Score) {
+        winnerMessage = `${p2Name} wins!`;
+      } else {
+        winnerMessage = "It's a tie!";
+      }
+
+      // Build a visually enhanced multiplayer game over screen using custom names
+      let endMessage = `
+          <div class="game-over" style="font-size: 36px; color: #FFD700; text-shadow: 2px 2px 4px #000;">
+              Game Over!
+          </div>
+          <div style="font-size: 24px; margin-top: 10px;">
+              <span style="color: ${player1Score >= player2Score ? '#00FF00' : '#FF0000'};">
+                  ${p1Name} Score: ${player1Score}
+              </span>
+              &nbsp;&nbsp;&nbsp;
+              <span style="color: ${player2Score >= player1Score ? '#00FF00' : '#FF0000'};">
+                  ${p2Name} Score: ${player2Score}
+              </span>
+          </div>
+          <div style="font-size: 28px; margin-top: 20px; color: #FFFFFF; text-shadow: 1px 1px 2px #000;">
+              ${winnerMessage}
+          </div>
+          <button id="restart" style="
+              margin-top: 20px;
+              padding: 10px 20px;
+              font-size: 18px;
+              background: #007bff;
+              color: white;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;">
+              Restart Game
+          </button>
+      `;
+
+      // Hide auxiliary UI elements that are not needed in game over state
+      document.getElementById("instructionsText").style.display = "none";
+      document.getElementById("feedback").textContent = "";
+      document.getElementById("answer").style.display = "none";
+      document.getElementById("points-bar").style.width = "0%";
+      document.getElementById("counter").style.display = "none";
+
+      // Replace the sentence area with the game over message
+      document.getElementById("sentence").innerHTML = endMessage;
+
+      // Show the download report button if present
+      const reportButton = document.getElementById("downloadReport");
+      if (reportButton) {
+        reportButton.style.display = "block";
+        if (!reportButton.dataset.listenerAdded) {
+          reportButton.addEventListener("click", () => this.downloadReport());
+          reportButton.dataset.listenerAdded = "true";
+        }
+      }
+
+      // Attach restart event listener
+      document.getElementById("restart").addEventListener("click", () => this.restartGame());
+    });
+  } else {
+    // Single player mode end game logic (preserving your existing code)
     let storedBest = localStorage.getItem("bestScoreSpanglish") || 0;
     let newHighScore = false;
     if (this.score > storedBest) {
-        localStorage.setItem("bestScoreSpanglish", this.score);
-        newHighScore = true;
+      localStorage.setItem("bestScoreSpanglish", this.score);
+      newHighScore = true;
     }
     this.updateBestScoreDisplay();
 
-    // Build a "Game Over" message
     let endMessage = `
         <div class="game-over">Game Over!</div>
         <div>Your score: ${this.score}</div>
     `;
     if (newHighScore) {
-        endMessage += `<div class="new-high">New High Score!</div>`;
+      endMessage += `<div class="new-high">New High Score!</div>`;
     }
 
-    // Replace the last sentence with the end message
     document.getElementById("sentence").innerHTML = endMessage;
-
-    // Hide the instructions paragraph and clear leftover feedback
     document.getElementById("instructionsText").style.display = "none";
     document.getElementById("feedback").textContent = "";
-
-    // Hide the answer input and reset the points bar
     document.getElementById("answer").style.display = "none";
     document.getElementById("points-bar").style.width = "0%";
-
-    // Show the restart button
     document.getElementById("restart").style.display = "block";
-
-    // Show review button if there are mistakes
     document.getElementById("review").style.display = this.wrongAnswers.length > 0 ? "block" : "none";
 
-    // Show the download report button if present
     const reportButton = document.getElementById("downloadReport");
     if (reportButton) {
-        reportButton.style.display = "block";
-        // Only attach the click listener once
-        if (!reportButton.dataset.listenerAdded) {
-            reportButton.addEventListener("click", () => this.downloadReport());
-            reportButton.dataset.listenerAdded = "true";
-        }
+      reportButton.style.display = "block";
+      if (!reportButton.dataset.listenerAdded) {
+        reportButton.addEventListener("click", () => this.downloadReport());
+        reportButton.dataset.listenerAdded = "true";
+      }
     }
+  }
 }
 
 restartGame() {
@@ -1012,61 +1099,113 @@ window.game = new SpanglishFixitGame(sentences);
 
 // Create a new game session and store it in Firebase
 function createGameSession(sentences) {
-  // Create a new session under the "gameSessions" node
+  // Shuffle sentences once so both players use the same order
+  const shuffledSentences = [...sentences].sort(() => Math.random() - 0.5);
   const newSessionRef = firebase.database().ref('gameSessions').push();
   const sessionId = newSessionRef.key;
   newSessionRef.set({
-    sentences: sentences,  // The set of sentences for the game
+    sentences: shuffledSentences,  // Shared shuffled order
     currentRound: 0,
     roundStartTime: Date.now(),
-    players: {
-      // Predefine slots for two players; player1 is the creator.
-      player1: { score: 0, hasAnswered: false },
-      player2: { score: 0, hasAnswered: false }
-    },
+    players: {},  // No pre-population here!
     createdAt: Date.now()
   });
   console.log("Created game session with ID:", sessionId);
   return sessionId;
 }
 
-
-// Join an existing game session with a given session (room) ID and player ID
-function joinGameSession(sessionId, playerId) {
-  currentSessionId = sessionId;
-  currentPlayerId = playerId;
+function joinGameSession(sessionId, userEnteredName) {
   const sessionRef = firebase.database().ref('gameSessions/' + sessionId);
-  
-  // Add the player to the session (if not already set)
-  sessionRef.child('players').child(playerId).set({
-    score: 0,
-    hasAnswered: false
+
+  // Check which player slot is free (player1 or player2)
+  sessionRef.child('players').once('value').then((snapshot) => {
+    const playersData = snapshot.val() || {};
+    let newPlayerKey;
+
+    if (!playersData.player1) {
+      newPlayerKey = 'player1';
+    } else if (!playersData.player2) {
+      newPlayerKey = 'player2';
+    } else {
+      console.error("Session is already full (2 players).");
+      return;
+    }
+
+    // Set the player's data using the fixed key, but store their custom name
+    sessionRef.child('players').child(newPlayerKey).set({
+      name: userEnteredName,
+      score: 0,
+      hasAnswered: false
+    });
+
+    // Update local references to the session and player key
+    currentSessionId = sessionId;
+    currentPlayerId  = newPlayerKey; // will be either 'player1' or 'player2'
+
+    // Listen for session changes and update the UI accordingly
+    sessionRef.on('value', (snapshot) => {
+      const gameState = snapshot.val();
+      console.log("Game session updated:", gameState);
+
+      // Update round counter and scores
+      if (gameState && typeof gameState.currentRound === "number") {
+        if (window.game.currentIndex !== gameState.currentRound) {
+          window.game.currentIndex = gameState.currentRound;
+          window.game.updateSentence();
+        }
+        document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
+      }
+
+      // Synchronize the sentence order if available
+      if (gameState && gameState.sentences) {
+        window.game.sentences = gameState.sentences;
+      }
+
+      // Check if two players are present and the game hasn't started yet
+      if (gameState && gameState.players && Object.keys(gameState.players).length === 2 &&
+          gameState.currentRound === 0 && !window.countdownStarted) {
+        window.countdownStarted = true;
+        const waitingEl = document.getElementById('waiting');
+        if (waitingEl) waitingEl.remove();
+        startCountdown();
+      }
+
+      // Display a waiting message if one player has answered but the other hasn't
+      if (gameState && gameState.players) {
+        const playerKeys = Object.keys(gameState.players);
+        // Find the other player's key
+        const otherPlayerKey = playerKeys.find(key => key !== currentPlayerId);
+        if (otherPlayerKey) {
+          if (gameState.players[currentPlayerId].hasAnswered &&
+              !gameState.players[otherPlayerKey].hasAnswered) {
+            document.getElementById("feedback").textContent = 
+              `Waiting for ${gameState.players[otherPlayerKey].name} to complete the round...`;
+          } else if (gameState.players[otherPlayerKey].hasAnswered &&
+                     !gameState.players[currentPlayerId].hasAnswered) {
+            document.getElementById("feedback").textContent = 
+              `Waiting for ${gameState.players[currentPlayerId].name} to complete the round...`;
+          } else {
+            // Clear the waiting message if both haven't answered or once both have answered
+            if (!gameState.roundOver) {
+              document.getElementById("feedback").textContent = "";
+            }
+          }
+        }
+      }
+
+      // If the shared roundOver flag is set and the overlay hasn't been displayed yet, show the intermission overlay
+      if (gameState && gameState.roundOver && !window.overlayDisplayed) {
+        window.overlayDisplayed = true;
+        // Retrieve the current sentence from the shared sentences using the currentRound index
+        showIntermission(gameState.sentences[gameState.currentRound], gameState);
+      }
+
+      // Optionally log player data for debugging
+      if (gameState && gameState.players) {
+        console.log("Players:", gameState.players);
+      }
+    });
   });
-  
-  // Listen for changes in the session data
-  sessionRef.on('value', (snapshot) => {
-  const gameState = snapshot.val();
-  console.log("Game session updated:", gameState);
-  
-  // Update the round counter in the UI based on the shared round.
-  if (gameState && typeof gameState.currentRound === "number") {
-    if (window.game.currentIndex !== gameState.currentRound) {
-      window.game.currentIndex = gameState.currentRound;
-      window.game.updateSentence();
-    }
-    document.getElementById("counter").textContent = `Round: ${gameState.currentRound + 1}`;
-  }
-  
-  // Update scores display safely:
-  if (gameState && gameState.players) {
-    if (gameState.players.player1) {
-      console.log("Player1 Score:", gameState.players.player1.score);
-    }
-    if (gameState.players.player2) {
-      console.log("Player2 Score:", gameState.players.player2.score);
-    }
-  }
-});
 }
 
 // -------------------------------
@@ -1086,9 +1225,7 @@ function joinGameSession(sessionId, playerId) {
 // - An input field for a room ID and a "Join Multiplayer Game" button that calls joinGameSession(roomId, playerId)
 // ------------------------------------------------------
 
-// Step 3: Function to submit an answer and update the Firebase state
 function submitAnswer(newScore) {
-  // Ensure we have a valid session and player
   if (!currentSessionId || !currentPlayerId) {
     console.error("Session ID or player ID is not set.");
     return;
@@ -1101,36 +1238,227 @@ function submitAnswer(newScore) {
     hasAnswered: true
   });
 
-  // Check if both players have answered
-  sessionRef.child('players').once('value', (snapshot) => {
-    const players = snapshot.val();
-    if (players.player1.hasAnswered && players.player2.hasAnswered) {
-      // Both players answered; advance to the next round
-      const newRound = (players.currentRound || 0) + 1;
+  // Read the entire session data to access currentRound and player scores
+  sessionRef.once('value', (snapshot) => {
+    const sessionData = snapshot.val();
+    const players = sessionData.players;
+    // When both players have answered and roundOver is not already set, update it
+    if (
+      players.player1.hasAnswered &&
+      players.player2 &&
+      players.player2.hasAnswered &&
+      !sessionData.roundOver
+    ) {
+      sessionRef.update({
+        roundOver: true,
+        roundOverTime: Date.now()
+      });
+    }
+  });
+}
+
+
+function showIntermission(currentSentence, sessionData) {
+  const sessionRef = firebase.database().ref('gameSessions/' + currentSessionId);
+  
+  // Retrieve players from the session data
+  const p1 = sessionData.players.player1;
+  const p2 = sessionData.players.player2;
+  
+  // Determine which player is leading
+  let firstPlayer, secondPlayer;
+  if (p1.score >= p2.score) {
+    firstPlayer = p1;
+    secondPlayer = p2;
+  } else {
+    firstPlayer = p2;
+    secondPlayer = p1;
+  }
+  
+  // Create an intermission overlay element with enhanced visuals
+  const intermissionDiv = document.createElement('div');
+  intermissionDiv.id = 'intermission';
+  intermissionDiv.style.position = 'absolute';
+  intermissionDiv.style.top = '50%';
+  intermissionDiv.style.left = '50%';
+  intermissionDiv.style.transform = 'translate(-50%, -50%)';
+  intermissionDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+  intermissionDiv.style.padding = '30px';
+  intermissionDiv.style.borderRadius = '12px';
+  intermissionDiv.style.boxShadow = '0px 0px 20px rgba(0, 0, 0, 0.5)';
+  intermissionDiv.style.zIndex = '2000';
+  intermissionDiv.style.color = '#fff';
+  intermissionDiv.style.fontFamily = "'Poppins', sans-serif";
+  
+  // Format the correct answer (handling arrays if necessary)
+  const correctText = Array.isArray(currentSentence.correctAnswer)
+    ? currentSentence.correctAnswer.join(" / ")
+    : currentSentence.correctAnswer;
+  
+  // Build the inner HTML using the custom names and ordering by score
+  intermissionDiv.innerHTML = `
+    <h2 style="margin-top: 0; font-size: 28px;">Round Complete!</h2>
+    <p style="font-size: 20px;">
+      <strong>Error Word:</strong> 
+      <span style="color: #FF4D4D; font-weight: bold;">${currentSentence.errorWord}</span>
+    </p>
+    <p style="font-size: 20px;">
+      <strong>Correct Word:</strong> 
+      <span style="color: #66FF66; font-weight: bold;">${correctText}</span>
+    </p>
+    <hr style="border: 1px solid #555; margin: 20px 0;">
+    <p style="font-size: 20px;">
+      <strong style="color: #00FF00;">${firstPlayer.name} Score:</strong> ${firstPlayer.score}
+    </p>
+    <p style="font-size: 20px;">
+      <strong style="color: #FF0000;">${secondPlayer.name} Score:</strong> ${secondPlayer.score}
+    </p>
+    <p style="font-size: 18px; margin-top: 20px;">
+      Next round starting in <span id="intermissionCountdown">5</span> seconds
+    </p>
+  `;
+  
+  document.getElementById("game-container").appendChild(intermissionDiv);
+  
+  // Set countdown to 5 seconds
+  let countdown = 5;
+  const intermissionInterval = setInterval(() => {
+    countdown--;
+    document.getElementById("intermissionCountdown").textContent = countdown;
+    if (countdown <= 0) {
+      clearInterval(intermissionInterval);
+      intermissionDiv.remove();
+      // Advance to the next round by updating Firebase:
+      const newRound = sessionData.currentRound + 1;
       sessionRef.update({
         currentRound: newRound,
-        roundStartTime: Date.now()
+        roundStartTime: Date.now(),
+        roundOver: false  // Clear the roundOver flag
       });
       // Reset answer flags for both players
       sessionRef.child('players').child('player1').update({ hasAnswered: false });
       sessionRef.child('players').child('player2').update({ hasAnswered: false });
-      console.log("Both players answered. Advancing to round:", newRound);
+      window.overlayDisplayed = false;
     }
-  });
-} // <-- Make sure this curly brace ends the submitAnswer() function
+  }, 1000);
+}
 
 // Now define startMultiplayerGame() at top level, not inside submitAnswer()
 function startMultiplayerGame() {
-  currentSessionId = createGameSession(sentences);
-  currentPlayerId = "player1";
-  joinGameSession(currentSessionId, currentPlayerId);
+  promptForPlayerName((name) => {
+    currentPlayerId = name; // Use the custom name for player1
+    currentSessionId = createGameSession(sentences);
+    joinGameSession(currentSessionId, currentPlayerId);
 
-  // Hide the single-player "Start Game" button since we're now in multiplayer mode
-  document.getElementById("start").style.display = "none";
+    // Hide the single-player Start button
+    document.getElementById("start").style.display = "none";
 
-  // Optionally mark the game as active
-  window.game.gameActive = true;
+    // Display a waiting message for player1 until another player joins
+    const waitingMessage = document.createElement('div');
+    waitingMessage.id = 'waiting';
+    waitingMessage.style.fontSize = '24px';
+    waitingMessage.style.marginTop = '10px';
+    waitingMessage.textContent = "Waiting for another player to join...";
+    document.getElementById("game-container").appendChild(waitingMessage);
 
-  console.log("Multiplayer session created & joined as player1:", currentSessionId);
+    // Mark the game as active in multiplayer mode
+    window.game.gameActive = true;
+    console.log("Multiplayer session created & joined as", currentPlayerId, "with session ID:", currentSessionId);
+  });
+}
+
+function startCountdown() {
+  let countdown = 5;
+  const countdownEl = document.createElement("div");
+  countdownEl.id = "countdown";
+  countdownEl.style.fontSize = "24px";
+  countdownEl.style.marginTop = "10px";
+  document.getElementById("game-container").appendChild(countdownEl);
+
+  const interval = setInterval(() => {
+    countdownEl.textContent = `Game starting in ${countdown}...`;
+    if (countdown <= 0) {
+      clearInterval(interval);
+      countdownEl.remove();
+      // Start the game for both players after countdown
+      window.game.startGame();
+    }
+    countdown--;
+  }, 1000);
+}
+
+function promptForPlayerName(callback) {
+  // Create an overlay element
+  const overlay = document.createElement("div");
+  overlay.id = "nameOverlay";
+  overlay.style.position = "fixed";
+  overlay.style.top = "0";
+  overlay.style.left = "0";
+  overlay.style.width = "100%";
+  overlay.style.height = "100%";
+  overlay.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "3000";
+  
+  // Create inner content with aesthetics matching the game overlays
+  overlay.innerHTML = `
+    <div style="
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      width: 80%;
+      max-width: 400px;
+      font-family: 'Poppins', sans-serif;
+    ">
+      <h2 style="margin-top: 0;">Enter Your Name</h2>
+      <input type="text" id="playerNameInput" placeholder="Your name" style="
+          padding: 10px;
+          font-size: 16px;
+          border-radius: 5px;
+          border: none;
+          outline: none;
+          text-align: center;
+          display: block;
+          margin: 10px auto;
+          width: 80%;
+      "/>
+      <br/>
+      <button id="submitPlayerName" style="
+          padding: 10px 20px;
+          font-size: 16px;
+          cursor: pointer;
+          background: #28a745;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          transition: 0.3s;
+      ">Submit</button>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Auto-select the input and allow submission with Enter key
+  const input = document.getElementById("playerNameInput");
+  input.focus();
+  input.addEventListener("keyup", (event) => {
+    if (event.key === "Enter") {
+      document.getElementById("submitPlayerName").click();
+    }
+  });
+  
+  document.getElementById("submitPlayerName").addEventListener("click", () => {
+    const name = input.value.trim();
+    if (name !== "") {
+      document.body.removeChild(overlay);
+      callback(name);
+    } else {
+      alert("Please enter a valid name.");
+    }
+  });
 }
 
